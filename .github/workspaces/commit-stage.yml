@@ -1,0 +1,59 @@
+name: Commit Stage
+on: push
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: thomasvitale/java-build-image
+  VERSION: ${{ github.sha }}
+
+jobs:
+  package:
+    name: Package and Publish
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.0.1
+
+      - name: Check out source code
+        uses: actions/checkout@v3
+
+      - name: Log into container registry
+        uses: redhat-actions/podman-login@v1.6
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_TOKEN }}
+      
+      - name: Build container image
+        run: |
+          podman build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
+      
+      - name: Add additional tags to OCI image
+        run: |
+          podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      
+      - name: Sign image
+        run: |
+          cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
+
+      - name: OCI image vulnerability scanning
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          format: 'sarif'
+          output: 'trivy-results-oci-image.sarif'
+
+      - name: Upload vulnerability report
+        uses: github/codeql-action/upload-sarif@v2
+        if: success() || failure()
+        with:
+          sarif_file: 'trivy-results-oci-image.sarif'
+
+      - name: Publish container image
+        run: podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
