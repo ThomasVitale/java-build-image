@@ -31,6 +31,7 @@ jobs:
       - name: Build container image
         run: |
           podman build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
+          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
       
       - name: OCI image vulnerability scanning
         uses: aquasecurity/trivy-action@master
@@ -45,9 +46,8 @@ jobs:
         with:
           sarif_file: 'trivy-results-oci-image.sarif'
       
-      - name: Publish and tag OCI image
+      - name: Additional tags for OCI image
         run: |
-          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
