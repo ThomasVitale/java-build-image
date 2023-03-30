@@ -49,7 +49,7 @@ jobs:
       - name: Additional tags for OCI image
         run: |
           podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
       
       - name: Sign image
