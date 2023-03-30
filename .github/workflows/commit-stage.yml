@@ -32,16 +32,6 @@ jobs:
         run: |
           podman build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
       
-      - name: Add additional tags to OCI image
-        run: |
-          podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-      
-      - name: Sign image
-        run: |
-          cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
-
       - name: OCI image vulnerability scanning
         uses: aquasecurity/trivy-action@master
         with:
@@ -54,6 +44,14 @@ jobs:
         if: success() || failure()
         with:
           sarif_file: 'trivy-results-oci-image.sarif'
-
-      - name: Publish container image
-        run: podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+      
+      - name: Publish and tag OCI image
+        run: |
+          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      
+      - name: Sign image
+        run: |
+          cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
